@@ -20,12 +20,8 @@ get_profile_packages() {
         networking) echo "iptables ipset iproute2 dnsutils" ;;
         c) echo "gdb valgrind clang clang-format clang-tidy cppcheck doxygen libboost-all-dev libcmocka-dev libcmocka0 lcov libncurses5-dev libncursesw5-dev" ;;
         openwrt) echo "rsync libncurses5-dev zlib1g-dev gawk gettext xsltproc libelf-dev ccache subversion swig time qemu-system-arm qemu-system-aarch64 qemu-system-mips qemu-system-x86 qemu-utils" ;;
-        rust) echo "" ;;  # Rust installed via rustup
         python) echo "" ;;  # Managed via uv
-        go) echo "" ;;  # Installed from tarball
         flutter) echo "" ;;  # Installed from source
-        javascript) echo "" ;;  # Installed via nvm
-        java) echo "" ;;  # Java installed via SDKMan, build tools in profile function
         ruby) echo "ruby-full ruby-dev libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt1-dev libcurl4-openssl-dev software-properties-common" ;;
         php) echo "php php-cli php-fpm php-mysql php-pgsql php-sqlite3 php-curl php-gd php-mbstring php-xml php-zip composer" ;;
         database) echo "postgresql-client mysql-client sqlite3 redis-tools mongodb-clients" ;;
@@ -47,12 +43,8 @@ get_profile_description() {
         networking) echo "Network Tools (IP stack, DNS, route tools)" ;;
         c) echo "C/C++ Development (debuggers, analyzers, Boost, ncurses, cmocka)" ;;
         openwrt) echo "OpenWRT Development (cross toolchain, QEMU, distro tools)" ;;
-        rust) echo "Rust Development (installed via rustup)" ;;
         python) echo "Python Development (managed via uv)" ;;
-        go) echo "Go Development (installed from upstream archive)" ;;
         flutter) echo "Flutter Development (installed from fvm)" ;;
-        javascript) echo "JavaScript/TypeScript (Node installed via nvm)" ;;
-        java) echo "Java Development (latest LTS, Maven, Gradle, Ant via SDKMan)" ;;
         ruby) echo "Ruby Development (gems, native deps, XML/YAML)" ;;
         php) echo "PHP Development (PHP + extensions + Composer)" ;;
         database) echo "Database Tools (clients for major databases)" ;;
@@ -67,7 +59,7 @@ get_profile_description() {
 }
 
 get_all_profile_names() {
-    echo "core build-tools shell networking c openwrt rust python go flutter javascript java ruby php database devops web embedded datascience security ml"
+    echo "core build-tools shell networking c openwrt python flutter ruby php database devops web embedded datascience security ml"
 }
 
 profile_exists() {
@@ -83,7 +75,7 @@ expand_profile() {
         c) echo "core build-tools c" ;;
         openwrt) echo "core build-tools openwrt" ;;
         ml) echo "core build-tools ml" ;;
-        rust|go|flutter|python|php|ruby|java|database|devops|web|embedded|datascience|security|javascript)
+        flutter|python|php|ruby|database|devops|web|embedded|datascience|security)
             echo "core $1"
             ;;
         shell|networking|build-tools|core)
@@ -232,26 +224,10 @@ get_profile_openwrt() {
     fi
 }
 
-get_profile_rust() {
-    cat << 'EOF'
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/home/claude/.cargo/bin:$PATH"
-EOF
-}
-
 get_profile_python() {
     cat << 'EOF'
 # Python profile - uv already installed in base image
 # Python venv and dev tools are managed via entrypoint flag system
-EOF
-}
-
-get_profile_go() {
-    cat << 'EOF'
-RUN wget -O go.tar.gz https://golang.org/dl/go1.21.0.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go.tar.gz && \
-    rm go.tar.gz
-ENV PATH="/usr/local/go/bin:$PATH"
 EOF
 }
 
@@ -266,36 +242,6 @@ RUN fvm global $flutter_version
 ENV PATH="/home/claude/fvm/default/bin:$PATH"
 RUN flutter doctor
 USER root
-EOF
-}
-
-get_profile_javascript() {
-    cat << 'EOF'
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-ENV NVM_DIR="/home/claude/.nvm"
-RUN . $NVM_DIR/nvm.sh && nvm install --lts
-USER claude
-RUN bash -c "source $NVM_DIR/nvm.sh && npm install -g typescript eslint prettier yarn pnpm"
-USER root
-EOF
-}
-
-get_profile_java() {
-    cat << 'EOF'
-USER claude
-RUN curl -s "https://get.sdkman.io?ci=true" | bash
-RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && sdk install java && sdk install maven && sdk install gradle && sdk install ant"
-USER root
-# Create symlinks for all Java tools in system PATH
-RUN for tool in java javac jar jshell; do \
-        ln -sf /home/claude/.sdkman/candidates/java/current/bin/$tool /usr/local/bin/$tool; \
-    done && \
-    ln -sf /home/claude/.sdkman/candidates/maven/current/bin/mvn /usr/local/bin/mvn && \
-    ln -sf /home/claude/.sdkman/candidates/gradle/current/bin/gradle /usr/local/bin/gradle && \
-    ln -sf /home/claude/.sdkman/candidates/ant/current/bin/ant /usr/local/bin/ant
-# Set JAVA_HOME environment variable
-ENV JAVA_HOME="/home/claude/.sdkman/candidates/java/current"
-ENV PATH="/home/claude/.sdkman/candidates/java/current/bin:$PATH"
 EOF
 }
 
@@ -368,6 +314,6 @@ get_profile_ml() {
 export -f _read_ini get_profile_packages get_profile_description get_all_profile_names profile_exists expand_profile
 export -f get_profile_file_path read_config_value read_profile_section update_profile_section get_current_profiles
 export -f get_profile_core get_profile_build_tools get_profile_shell get_profile_networking get_profile_c get_profile_openwrt
-export -f get_profile_rust get_profile_python get_profile_go get_profile_flutter get_profile_javascript get_profile_java get_profile_ruby
+export -f get_profile_python get_profile_flutter get_profile_ruby
 export -f get_profile_php get_profile_database get_profile_devops get_profile_web get_profile_embedded get_profile_datascience
 export -f get_profile_security get_profile_ml

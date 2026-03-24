@@ -20,7 +20,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg]" \
     "https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt-get update && \
         apt-get install -y --no-autoremove --no-install-recommends apt-utils wget zsh fzf ca-certificates sudo git tmux iptables ipset gh zip unzip jq \
-        procps vim nano less iputils-ping traceroute dnsutils netcat-openbsd net-tools xdg-utils
+        procps vim nano less iputils-ping traceroute dnsutils netcat-openbsd net-tools xdg-utils \
+        ripgrep fd-find bat tree htop silversearcher-ag && \
+    ln -sf /usr/bin/fdfind /usr/local/bin/fd && \
+    (ln -sf /usr/bin/batcat /usr/local/bin/bat 2>/dev/null || true)
 
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
@@ -73,7 +76,7 @@ ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh
 
 ENV NVM_DIR="/home/$USERNAME/.nvm"
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
 RUN bash -c "source $NVM_DIR/nvm.sh && \
     if [[ \"$NODE_VERSION\" == '--lts' ]]; then \
@@ -91,7 +94,9 @@ RUN echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc && \
 
 RUN bash -c "source $NVM_DIR/nvm.sh && \
     nvm use default && \
-    npm install -g @anthropic-ai/claude-code"
+    npm install -g typescript eslint prettier yarn pnpm tsx"
+
+RUN curl -fsSL https://claude.ai/install.sh | sh
 
 RUN cat >> ~/.zshrc <<'EOF'
 
@@ -137,6 +142,53 @@ if [ -n "$PS1" ] && command -v stty >/dev/null 2>&1; then
 fi
 EOF
 
+# Install Go (latest stable) + Go tools
+RUN GOARCH=$(dpkg --print-architecture) && \
+    GOVERSION=$(curl -fsSL "https://go.dev/VERSION?m=text" | head -1) && \
+    wget -q -O /tmp/go.tar.gz "https://go.dev/dl/${GOVERSION}.linux-${GOARCH}.tar.gz" && \
+    tar -C /usr/local -xzf /tmp/go.tar.gz && \
+    rm /tmp/go.tar.gz
+ENV PATH="/usr/local/go/bin:$PATH"
+USER $USERNAME
+RUN /usr/local/go/bin/go install golang.org/x/tools/gopls@latest && \
+    /usr/local/go/bin/go install github.com/go-delve/delve/cmd/dlv@latest && \
+    /usr/local/go/bin/go install golang.org/x/tools/cmd/goimports@latest && \
+    /usr/local/go/bin/go install honnef.co/go/tools/cmd/staticcheck@latest && \
+    /usr/local/go/bin/go install github.com/air-verse/air@latest
+ENV PATH="/home/$USERNAME/go/bin:$PATH"
+USER root
+
+# Install just (command runner)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+# Install Rust (latest stable via rustup) + cargo tools
+USER $USERNAME
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/home/$USERNAME/.cargo/bin:$PATH"
+RUN bash -c "source \$HOME/.cargo/env && \
+    cargo install cargo-edit cargo-watch cargo-expand cargo-audit cargo-deny \
+    cargo-tarpaulin cargo-criterion cargo-release cargo-bloat cargo-flamegraph \
+    cargo-make cargo-outdated cargo-tree sccache bacon tokei hyperfine"
+USER root
+
+# Install Java (latest LTS), Maven, Gradle, Ant, Kotlin, Spring Boot via SDKMan
+USER $USERNAME
+RUN curl -s "https://get.sdkman.io?ci=true" | bash && \
+    bash -c "source \$HOME/.sdkman/bin/sdkman-init.sh && \
+    sdk install java && sdk install maven && sdk install gradle && \
+    sdk install ant && sdk install kotlin && sdk install springboot"
+USER root
+RUN for tool in java javac jar jshell; do \
+        ln -sf /home/$USERNAME/.sdkman/candidates/java/current/bin/$tool /usr/local/bin/$tool; \
+    done && \
+    ln -sf /home/$USERNAME/.sdkman/candidates/maven/current/bin/mvn /usr/local/bin/mvn && \
+    ln -sf /home/$USERNAME/.sdkman/candidates/gradle/current/bin/gradle /usr/local/bin/gradle && \
+    ln -sf /home/$USERNAME/.sdkman/candidates/ant/current/bin/ant /usr/local/bin/ant && \
+    ln -sf /home/$USERNAME/.sdkman/candidates/kotlin/current/bin/kotlin /usr/local/bin/kotlin && \
+    ln -sf /home/$USERNAME/.sdkman/candidates/springboot/current/bin/spring /usr/local/bin/spring
+ENV JAVA_HOME="/home/$USERNAME/.sdkman/candidates/java/current"
+ENV PATH="/home/$USERNAME/.sdkman/candidates/java/current/bin:$PATH"
+
 {{PROFILE_INSTALLATIONS}}
 
 {{LABELS}}
@@ -151,7 +203,7 @@ RUN mkdir -p /usr/local/lib/claudebox
 COPY tools-report.sh /usr/local/lib/claudebox/tools-report.sh
 
 USER $USERNAME
-RUN bash -c "source $NVM_DIR/nvm.sh && claude --version"
+RUN claude --version
 
 WORKDIR /workspace
 USER root

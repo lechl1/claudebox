@@ -22,28 +22,18 @@ The Ultimate Claude Code Docker Development Environment - Run Claude AI's coding
 ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 ```
 
-## 🚀 What's New in Latest Update
-
-- **Enhanced UI/UX**: Improved menu alignment and comprehensive info display
-- **New `profiles` Command**: Quick listing of all available profiles with descriptions
-- **Firewall Management**: New `allowlist` command to view/edit network allowlists
-- **Per-Project Isolation**: Separate Docker images, auth state, history, and configs
-- **Improved Clean Menu**: Clear descriptions showing exact paths that will be removed
-- **Profile Management Menu**: Interactive profile command with status and examples
-- **Persistent Project Data**: Auth state, shell history, and tool configs preserved
-- **Smart Profile Dependencies**: Automatic dependency resolution (e.g., C includes build-tools)
-
 ## ✨ Features
 
 - **Containerized Environment**: Run Claude Code in an isolated Docker container
-- **Development Profiles**: Pre-configured language stacks (C/C++, Python, Rust, Go, etc.)
+- **Full Language Stack Built-In**: Go, Rust, Java, Node.js installed by default — no profile needed
+- **Rich Default Tooling**: ripgrep, fd, bat, fzf, tree, htop, ag, just, delta, and more pre-installed
+- **Development Profiles**: Optional add-ons for C/C++, Python, Flutter, Ruby, PHP, and more
 - **Project Isolation**: Complete separation of images, settings, and data between projects
 - **Persistent Configuration**: Settings and data persist between sessions
 - **Multi-Instance Support**: Work on multiple projects simultaneously
 - **Package Management**: Easy installation of additional development tools
 - **Auto-Setup**: Handles Docker installation and configuration automatically
 - **Security Features**: Network isolation with project-specific firewall allowlists
-- **Developer Experience**: GitHub CLI, Delta, fzf, and zsh with oh-my-zsh powerline
 - **Python Virtual Environments**: Automatic per-project venv creation with uv
 - **Cross-Platform**: Works on Ubuntu, Debian, Fedora, Arch, and more
 - **Shell Experience**: Powerline zsh with syntax highlighting and autosuggestions
@@ -167,7 +157,7 @@ claudebox shell
 
 # Terminal 3 - Project C
 cd ~/projects/ml-model
-claudebox profile python ml
+claudebox add python ml
 ```
 
 Each project maintains its own:
@@ -178,24 +168,46 @@ Each project maintains its own:
 - Memory and context (via MCP)
 - Claude configuration (`.claude.json`)
 
+### Built-In Tools (Always Available)
+
+Every ClaudeBox container includes these tools out of the box — no profile required:
+
+**Languages & Runtimes:**
+- **Go** (latest stable) — gopls, dlv, goimports, staticcheck, air
+- **Rust** (latest stable via rustup) — cargo-edit, cargo-watch, cargo-expand, cargo-audit, cargo-deny, cargo-tarpaulin, cargo-criterion, cargo-release, cargo-bloat, cargo-flamegraph, cargo-make, cargo-outdated, cargo-tree, sccache, bacon, tokei, hyperfine
+- **Java** (latest LTS via SDKMan) — Maven, Gradle, Ant, Kotlin, Spring Boot CLI
+- **Node.js** (LTS via NVM) — TypeScript, ESLint, Prettier, Yarn, pnpm, tsx
+
+**Developer Tools:**
+- **just** — command runner
+- **ripgrep** (`rg`) — fast code search
+- **fd** — fast file finder
+- **bat** — syntax-highlighted cat
+- **fzf** — fuzzy finder
+- **delta** — enhanced git diffs
+- **tree** — directory listing
+- **htop** — process monitor
+- **ag** — silver searcher
+- **gh** — GitHub CLI
+- **jq** — JSON processor
+- **uv** — fast Python package manager
+- **zsh** — powerline shell with oh-my-zsh
+
 ### Development Profiles
 
-ClaudeBox includes 15+ pre-configured development environments:
+Profiles are optional add-ons for specialized environments. The base image already includes Go, Rust, Java, and Node.
 
 ```bash
 # List all available profiles with descriptions
 claudebox profiles
 
-# Interactive profile management menu
-claudebox profile
-
 # Check current project's profiles
-claudebox profile status
+claudebox add status
 
-# Install specific profiles (project-specific)
-claudebox profile python ml       # Python + Machine Learning
-claudebox profile c openwrt       # C/C++ + OpenWRT
-claudebox profile rust go         # Rust + Go
+# Add profiles (project-specific, triggers image rebuild)
+claudebox add python ml       # Python + Machine Learning
+claudebox add c openwrt       # C/C++ + OpenWRT
+claudebox add flutter         # Flutter mobile development
 ```
 
 #### Available Profiles:
@@ -203,17 +215,13 @@ claudebox profile rust go         # Rust + Go
 **Core Profiles:**
 - **core** - Core Development Utilities (compilers, VCS, shell tools)
 - **build-tools** - Build Tools (CMake, autotools, Ninja)
-- **shell** - Optional Shell Tools (fzf, SSH, man, rsync, file)
+- **shell** - Optional Shell Tools (SSH, man, rsync, file)
 - **networking** - Network Tools (IP stack, DNS, route tools)
 
 **Language Profiles:**
 - **c** - C/C++ Development (debuggers, analyzers, Boost, ncurses, cmocka)
-- **rust** - Rust Development (installed via rustup)
 - **python** - Python Development (managed via uv)
-- **go** - Go Development (installed from upstream archive)
-- **flutter** - Flutter Framework (installed using fvm, use FLUTTER_SDK_VERSION to set different version)
-- **javascript** - JavaScript/TypeScript (Node installed via nvm)
-- **java** - Java Development (Latest LTS via SDKMan, Maven, Gradle, Ant)
+- **flutter** - Flutter Framework (installed using fvm; use `FLUTTER_SDK_VERSION` to pin a version)
 - **ruby** - Ruby Development (gems, native deps, XML/YAML)
 - **php** - PHP Development (PHP + extensions + Composer)
 
@@ -225,7 +233,7 @@ claudebox profile rust go         # Rust + Go
 - **embedded** - Embedded Dev (ARM toolchain, serial debuggers)
 - **datascience** - Data Science (Python, Jupyter, R)
 - **security** - Security Tools (scanners, crackers, packet tools)
-- **ml** - Machine Learning (build layer only; Python via uv)
+- **ml** - Machine Learning (build layer; Python via uv)
 
 ### Default Flags Management
 
@@ -378,18 +386,18 @@ Each project automatically gets:
 ## 🏗️ Architecture
 
 ClaudeBox creates a per-project Debian-based Docker image with:
-- Node.js (via NVM for version flexibility)
-- Claude Code CLI (@anthropic-ai/claude-code)
+- Claude Code CLI (installed via official bash installer)
+- Go (latest stable), Rust (latest stable), Java (latest LTS), Node.js LTS — all built-in
+- Full cargo toolchain, Go dev tools, JVM toolchain, npm globals — all built-in
+- just, ripgrep, fd, bat, fzf, tree, htop, ag — all built-in
 - User account matching host UID/GID
 - Network firewall (project-specific allowlists)
 - Volume mounts for workspace and configuration
 - GitHub CLI (gh) for repository operations
-- Delta for enhanced git diffs (version 0.17.0)
+- Delta for enhanced git diffs
 - uv for fast Python package management
-- Nala for improved apt package management
-- fzf for fuzzy finding
 - zsh with oh-my-zsh and powerline theme
-- Profile-specific development tools with intelligent layer caching
+- Optional profile add-ons with intelligent Docker layer caching
 - Persistent project state (auth, history, configs)
 
 ## 🤝 Contributing
@@ -413,7 +421,7 @@ ClaudeBox automatically handles Docker setup, but if you encounter issues:
 # Clean and rebuild for current project
 claudebox clean --project
 claudebox rebuild
-claudebox profile <name>
+claudebox add <name>
 ```
 
 ### Profile Changes Not Taking Effect
